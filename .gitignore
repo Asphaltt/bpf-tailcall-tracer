@@ -1,0 +1,16 @@
+
+# editor
+.vscode/
+
+# kernel module
+*.cmd
+*.ko
+*.mod
+*.mod.c
+*.o
+*.order
+Module.symvers
+
+*_bpfe*
+
+/bpf-tailcall-tracer

@@ -1,0 +1,279 @@
+// Copyright 2023 Leon Hwang.
+// SPDX-License-Identifier: Apache-2.0
+
+ffffffffc00d1448 t bpf_prog_62bef93723588309_handle_new_connection      [bpf]
+ffffffffc00d1594 t bpf_prog_3fb68e69f39b4dbf_k_icsk_complete_hashdance  [bpf]
+ffffffffc00d1664 t bpf_prog_cd7cd930d5a4d05c_k_tcp_connect      [bpf]
+ffffffffc00d1710 t bpf_prog_eef12c319a7cffba_fentry_tailcall    [bpf]
+
+
+ffffffffc004d794 t bpf_prog_9f21ed85bfcd4a97_fentry__netif_schedule     [bpf]
+ffffffffc005315c t bpf_prog_e3b6f3e4d5b29b3b_fentry__qdisc_run  [bpf]
+ffffffffc004d8dc t bpf_prog_eb54ce95a7bf2993_fentry_net_tx_action       [bpf]
+ffffffffc004facc t bpf_prog_9859511a4720614b_fentry_pfifo_fast_dequeue  [bpf]
+ffffffffc0053314 t bpf_prog_1d39f774f0461b5c_fentry_pfifo_fast_enqueue  [bpf]
+ffffffffc0053464 t bpf_prog_8b4159e28608f8a2_fentry_sch_direct_xmit     [bpf]
+ffffffffc00535a8 t bpf_prog_e1f43d957f60443a_fexit__dev_queue_xmit      [bpf]
+ffffffffc00539dc t bpf_prog_93ba9df425abad52___compute_hash     [bpf]
+ffffffffc0053710 t bpf_prog_98e20cd21352d592_fexit__qdisc_run   [bpf]
+ffffffffc004d97c t bpf_prog_a4331b93d3bc1065_fexit_net_tx_action        [bpf]
+ffffffffc005604c t bpf_prog_2663a664c74b647b_fexit_pfifo_fast_dequeue   [bpf]
+ffffffffc005e44c t bpf_prog_d3ae4bce0ec86e07_fexit_pfifo_fast_enqueue   [bpf]
+ffffffffc005e5a4 t bpf_prog_092235a11e2a3d81_handle_net_dev_queue       [bpf]
+ffffffffc005f59c t bpf_prog_c1143bac1aeaf749_handle_qdisc_dequeue       [bpf]
+ffffffffc09dc000 t bpf_trampoline_6442516417    [bpf]
+ffffffffc09e0000 t bpf_trampoline_6442565163    [bpf]
+ffffffffc09e2000 t bpf_trampoline_6442565553    [bpf]
+ffffffffc09e6000 t bpf_trampoline_6442525478    [bpf]
+ffffffffc09ea000 t bpf_trampoline_6442525482    [bpf]
+ffffffffc09ee000 t bpf_trampoline_6442573129    [bpf]
+ffffffffc09f0000 t bpf_trampoline_6442527006    [bpf]
+
+
+gdb -q -c /proc/kcore -ex 'x/180i 0xffffffffc09e2000' -ex 'quit'
+
+
+   0xffffffffc00d1664:	nopl   0x0(%rax,%rax,1)
+   0xffffffffc00d1669:	xor    %eax,%eax
+   0xffffffffc00d166b:	push   %rbp
+   0xffffffffc00d166c:	mov    %rsp,%rbp
+   0xffffffffc00d166f:	sub    $0x10,%rsp
+   0xffffffffc00d1676:	push   %rax
+   0xffffffffc00d1677:	push   %rbx
+   0xffffffffc00d1678:	push   %r13
+   0xffffffffc00d167a:	mov    %rdi,%rbx
+   0xffffffffc00d167d:	mov    0x70(%rbx),%rdi
+   0xffffffffc00d1681:	mov    %rdi,-0x8(%rbp)
+   0xffffffffc00d1685:	xor    %edi,%edi
+   0xffffffffc00d1687:	mov    %edi,-0xc(%rbp)
+   0xffffffffc00d168a:	mov    %rbp,%rsi
+   0xffffffffc00d168d:	add    $0xfffffffffffffff4,%rsi
+   0xffffffffc00d1691:	mov    %rbp,%rdx
+   0xffffffffc00d1694:	add    $0xfffffffffffffff8,%rdx
+   0xffffffffc00d1698:	movabs $0xffff8a7f00d16a00,%rdi
+   0xffffffffc00d16a2:	xor    %ecx,%ecx
+   0xffffffffc00d16a4:	mov    -0x18(%rbp),%rax
+   0xffffffffc00d16ab:	call   0xffffffffb8d14330
+   0xffffffffc00d16b0:	movabs $0xffff8a7f07486600,%r13
+   0xffffffffc00d16ba:	mov    %rbx,%rdi
+   0xffffffffc00d16bd:	mov    %r13,%rsi
+   0xffffffffc00d16c0:	xor    %edx,%edx
+   0xffffffffc00d16c2:	mov    -0x14(%rbp),%eax
+   0xffffffffc00d16c8:	cmp    $0x21,%eax
+   0xffffffffc00d16cb:	jae    0xffffffffc00d16eb
+   0xffffffffc00d16cd:	add    $0x1,%eax
+   0xffffffffc00d16d0:	mov    %eax,-0x14(%rbp)
+   0xffffffffc00d16d6:	call   0xffffffffc00d1710
+   0xffffffffc00d16db:	pop    %r13
+   0xffffffffc00d16dd:	pop    %rbx
+   0xffffffffc00d16de:	pop    %rax
+   0xffffffffc00d16df:	add    $0x10,%rsp
+   0xffffffffc00d16e6:	jmp    0xffffffffc00d1453
+   0xffffffffc00d16eb:	xor    %eax,%eax
+   0xffffffffc00d16ed:	pop    %r13
+   0xffffffffc00d16ef:	pop    %rbx
+   0xffffffffc00d16f0:	leave
+   0xffffffffc00d16f1:	ret
+
+
+   0xffffffffc00d1710:	nopl   0x0(%rax,%rax,1)
+   0xffffffffc00d1715:	xchg   %ax,%ax
+   0xffffffffc00d1717:	push   %rbp
+   0xffffffffc00d1718:	mov    %rsp,%rbp
+   0xffffffffc00d171b:	sub    $0x18,%rsp
+   0xffffffffc00d1722:	push   %rbx
+   0xffffffffc00d1723:	push   %r13
+   0xffffffffc00d1725:	push   %r14
+   0xffffffffc00d1727:	mov    %rdi,%rbx
+   0xffffffffc00d172a:	movabs $0xffff8a7f00d17b10,%rdi
+   0xffffffffc00d1734:	mov    $0x1a,%esi
+   0xffffffffc00d1739:	call   0xffffffffb8cb95a0
+   0xffffffffc00d173e:	xor    %r13d,%r13d
+   0xffffffffc00d1741:	mov    %r13d,-0x18(%rbp)
+   0xffffffffc00d1745:	mov    %rbp,%rsi
+   0xffffffffc00d1748:	add    $0xffffffffffffffe8,%rsi
+   0xffffffffc00d174c:	movabs $0xffff8a7f00d16a00,%rdi
+   0xffffffffc00d1756:	call   0xffffffffb8d13ab0
+   0xffffffffc00d175b:	test   %rax,%rax
+   0xffffffffc00d175e:	je     0xffffffffc00d1828
+   0xffffffffc00d1764:	mov    0x0(%rax),%r14
+   0xffffffffc00d1768:	mov    %r13,-0x8(%rbp)
+   0xffffffffc00d176c:	mov    %r13,-0x10(%rbp)
+   0xffffffffc00d1770:	mov    $0x4,%edi
+   0xffffffffc00d1775:	mov    %r14,%rdx
+   0xffffffffc00d1778:	add    %rdi,%rdx
+   0xffffffffc00d177b:	mov    %rbp,%r13
+   0xffffffffc00d177e:	add    $0xfffffffffffffff0,%r13
+   0xffffffffc00d1782:	mov    %r13,%rdi
+   0xffffffffc00d1785:	mov    $0x4,%esi
+   0xffffffffc00d178a:	call   0xffffffffb8cb6a50
+   0xffffffffc00d178f:	xor    %edi,%edi
+   0xffffffffc00d1791:	mov    %r14,%rdx
+   0xffffffffc00d1794:	add    %rdi,%rdx
+   0xffffffffc00d1797:	mov    %rbp,%rdi
+   0xffffffffc00d179a:	add    $0xffffffffffffffec,%rdi
+   0xffffffffc00d179e:	mov    $0x4,%esi
+   0xffffffffc00d17a3:	call   0xffffffffb8cb6a50
+   0xffffffffc00d17a8:	mov    -0x14(%rbp),%edi
+   0xffffffffc00d17ab:	mov    %edi,-0xc(%rbp)
+   0xffffffffc00d17ae:	mov    $0xe,%edi
+   0xffffffffc00d17b3:	mov    %r14,%rdx
+   0xffffffffc00d17b6:	add    %rdi,%rdx
+   0xffffffffc00d17b9:	mov    %rbp,%rdi
+   0xffffffffc00d17bc:	add    $0xffffffffffffffec,%rdi
+   0xffffffffc00d17c0:	mov    $0x2,%esi
+   0xffffffffc00d17c5:	call   0xffffffffb8cb6a50
+   0xffffffffc00d17ca:	movzwq -0x14(%rbp),%rdi
+   0xffffffffc00d17cf:	mov    %di,-0x8(%rbp)
+   0xffffffffc00d17d3:	mov    $0xc,%edi
+   0xffffffffc00d17d8:	add    %rdi,%r14
+   0xffffffffc00d17db:	mov    %rbp,%rdi
+   0xffffffffc00d17de:	add    $0xffffffffffffffec,%rdi
+   0xffffffffc00d17e2:	mov    $0x2,%esi
+   0xffffffffc00d17e7:	mov    %r14,%rdx
+   0xffffffffc00d17ea:	call   0xffffffffb8cb6a50
+   0xffffffffc00d17ef:	mov    $0x1,%edi
+   0xffffffffc00d17f4:	mov    %di,-0x4(%rbp)
+   0xffffffffc00d17f8:	movzwq -0x14(%rbp),%rdi
+   0xffffffffc00d17fd:	ror    $0x8,%di
+   0xffffffffc00d1801:	movzwl %di,%edi
+   0xffffffffc00d1804:	mov    %di,-0x6(%rbp)
+   0xffffffffc00d1808:	mov    %rbx,%rdi
+   0xffffffffc00d180b:	movabs $0xffff8a7f00d16800,%rsi
+   0xffffffffc00d1815:	mov    $0xffffffff,%edx
+   0xffffffffc00d181a:	mov    %r13,%rcx
+   0xffffffffc00d181d:	mov    $0x10,%r8d
+   0xffffffffc00d1823:	call   0xffffffffb8cb7d40
+   0xffffffffc00d1828:	xor    %eax,%eax
+   0xffffffffc00d182a:	pop    %r14
+   0xffffffffc00d182c:	pop    %r13
+   0xffffffffc00d182e:	pop    %rbx
+   0xffffffffc00d182f:	leave
+   0xffffffffc00d1830:	ret
+
+
+   0xffffffffc00ce690:	nopl   0x0(%rax,%rax,1)
+   0xffffffffc00ce695:	xchg   %ax,%ax
+   0xffffffffc00ce697:	push   %rbp
+   0xffffffffc00ce698:	mov    %rsp,%rbp
+   0xffffffffc00ce69b:	movabs $0xffff8a7f15757b10,%rdi
+   0xffffffffc00ce6a5:	mov    $0x1a,%esi
+   0xffffffffc00ce6aa:	call   0xffffffffb8cb95a0
+   0xffffffffc00ce6af:	xor    %eax,%eax
+   0xffffffffc00ce6b1:	leave
+   0xffffffffc00ce6b2:	ret
+
+   0xffffffffc00d1454:	nopl   0x0(%rax,%rax,1)
+   0xffffffffc00d1459:	xchg   %ax,%ax
+   0xffffffffc00d145b:	push   %rbp
+   0xffffffffc00d145c:	mov    %rsp,%rbp
+   0xffffffffc00d145f:	sub    $0x18,%rsp
+   0xffffffffc00d1466:	push   %rbx
+   0xffffffffc00d1467:	push   %r13
+   0xffffffffc00d1469:	push   %r14
+   0xffffffffc00d146b:	push   %r15
+   0xffffffffc00d146d:	mov    %rdi,%rbx
+   0xffffffffc00d1470:	xor    %r15d,%r15d
+   0xffffffffc00d1473:	mov    %r15d,-0x18(%rbp)
+   0xffffffffc00d1477:	mov    %rbp,%rsi
+   0xffffffffc00d147a:	add    $0xffffffffffffffe8,%rsi
+   0xffffffffc00d147e:	movabs $0xffff8a7f00d16400,%rdi
+   0xffffffffc00d1488:	call   0xffffffffb8d13ab0
+   0xffffffffc00d148d:	mov    %rax,%r13
+   0xffffffffc00d1490:	test   %r13,%r13
+   0xffffffffc00d1493:	je     0xffffffffc00d156d
+   0xffffffffc00d1499:	movabs $0xffff8a7f00d17110,%rdi
+   0xffffffffc00d14a3:	mov    $0x20,%esi
+   0xffffffffc00d14a8:	call   0xffffffffb8cb95a0
+   0xffffffffc00d14ad:	mov    0x0(%r13),%r14
+   0xffffffffc00d14b1:	mov    %r15,-0x8(%rbp)
+   0xffffffffc00d14b5:	mov    %r15,-0x10(%rbp)
+   0xffffffffc00d14b9:	mov    $0x4,%edi
+   0xffffffffc00d14be:	mov    %r14,%rdx
+   0xffffffffc00d14c1:	add    %rdi,%rdx
+   0xffffffffc00d14c4:	mov    %rbp,%r13
+   0xffffffffc00d14c7:	add    $0xfffffffffffffff0,%r13
+   0xffffffffc00d14cb:	mov    %r13,%rdi
+   0xffffffffc00d14ce:	mov    $0x4,%esi
+   0xffffffffc00d14d3:	call   0xffffffffb8cb6a50
+   0xffffffffc00d14d8:	xor    %edi,%edi
+   0xffffffffc00d14da:	mov    %r14,%rdx
+   0xffffffffc00d14dd:	add    %rdi,%rdx
+   0xffffffffc00d14e0:	mov    %rbp,%rdi
+   0xffffffffc00d14e3:	add    $0xffffffffffffffec,%rdi
+   0xffffffffc00d14e7:	mov    $0x4,%esi
+   0xffffffffc00d14ec:	call   0xffffffffb8cb6a50
+   0xffffffffc00d14f1:	mov    -0x14(%rbp),%edi
+   0xffffffffc00d14f4:	mov    %edi,-0xc(%rbp)
+   0xffffffffc00d14f7:	mov    $0xe,%edi
+   0xffffffffc00d14fc:	mov    %r14,%rdx
+   0xffffffffc00d14ff:	add    %rdi,%rdx
+   0xffffffffc00d1502:	mov    %rbp,%rdi
+   0xffffffffc00d1505:	add    $0xffffffffffffffec,%rdi
+   0xffffffffc00d1509:	mov    $0x2,%esi
+   0xffffffffc00d150e:	call   0xffffffffb8cb6a50
+   0xffffffffc00d1513:	movzwq -0x14(%rbp),%rdi
+   0xffffffffc00d1518:	mov    %di,-0x8(%rbp)
+   0xffffffffc00d151c:	mov    $0xc,%edi
+   0xffffffffc00d1521:	add    %rdi,%r14
+   0xffffffffc00d1524:	mov    %rbp,%rdi
+   0xffffffffc00d1527:	add    $0xffffffffffffffec,%rdi
+   0xffffffffc00d152b:	mov    $0x2,%esi
+   0xffffffffc00d1530:	mov    %r14,%rdx
+   0xffffffffc00d1533:	call   0xffffffffb8cb6a50
+   0xffffffffc00d1538:	mov    %r15w,-0x4(%rbp)
+   0xffffffffc00d153d:	movzwq -0x14(%rbp),%rdi
+   0xffffffffc00d1542:	ror    $0x8,%di
+   0xffffffffc00d1546:	movzwl %di,%edi
+   0xffffffffc00d1549:	mov    %di,-0x6(%rbp)
+   0xffffffffc00d154d:	mov    %rbx,%rdi
+   0xffffffffc00d1550:	movabs $0xffff8a7f00d17400,%rsi
+   0xffffffffc00d155a:	mov    $0xffffffff,%edx
+   0xffffffffc00d155f:	mov    %r13,%rcx
+   0xffffffffc00d1562:	mov    $0x10,%r8d
+   0xffffffffc00d1568:	call   0xffffffffb8cb91f0
+   0xffffffffc00d156d:	xor    %eax,%eax
+   0xffffffffc00d156f:	pop    %r15
+   0xffffffffc00d1571:	pop    %r14
+   0xffffffffc00d1573:	pop    %r13
+   0xffffffffc00d1575:	pop    %rbx
+   0xffffffffc00d1576:	leave
+   0xffffffffc00d1577:	ret
+
+
+# trampoline itself
+   0xffffffffc09f0000:	push   %rbp
+   0xffffffffc09f0001:	mov    %rsp,%rbp
+   0xffffffffc09f0004:	sub    $0x50,%rsp
+   0xffffffffc09f0008:	mov    %rbx,-0x40(%rbp)
+   0xffffffffc09f000c:	mov    $0x6,%eax
+   0xffffffffc09f0011:	mov    %rax,-0x38(%rbp)
+   0xffffffffc09f0015:	mov    %rdi,-0x30(%rbp)
+   0xffffffffc09f0019:	mov    %rsi,-0x28(%rbp)
+   0xffffffffc09f001d:	mov    %rdx,-0x20(%rbp)
+   0xffffffffc09f0021:	mov    %rcx,-0x18(%rbp)
+   0xffffffffc09f0025:	mov    %r8,-0x10(%rbp)
+   0xffffffffc09f0029:	mov    %r9,-0x8(%rbp)
+   0xffffffffc09f002d:	xor    %edi,%edi
+   0xffffffffc09f002f:	mov    %rdi,-0x50(%rbp)
+   0xffffffffc09f0033:	movabs $0xffffab3480251000,%rdi
+   0xffffffffc09f003d:	lea    -0x50(%rbp),%rsi
+   0xffffffffc09f0041:	call   0xffffffffb4b1a050
+   0xffffffffc09f0046:	mov    %rax,%rbx
+   0xffffffffc09f0049:	test   %rax,%rax
+   0xffffffffc09f004c:	je     0xffffffffc09f0057
+   0xffffffffc09f004e:	lea    -0x30(%rbp),%rdi
+   0xffffffffc09f0052:	call   0xffffffffc0053464
+   0xffffffffc09f0057:	movabs $0xffffab3480251000,%rdi
+   0xffffffffc09f0061:	mov    %rbx,%rsi
+   0xffffffffc09f0064:	lea    -0x50(%rbp),%rdx
+   0xffffffffc09f0068:	call   0xffffffffb4b1a380
+   0xffffffffc09f006d:	mov    -0x30(%rbp),%rdi
+   0xffffffffc09f0071:	mov    -0x28(%rbp),%rsi
+   0xffffffffc09f0075:	mov    -0x20(%rbp),%rdx
+   0xffffffffc09f0079:	mov    -0x18(%rbp),%rcx
+   0xffffffffc09f007d:	mov    -0x10(%rbp),%r8
+   0xffffffffc09f0081:	mov    -0x8(%rbp),%r9
+   0xffffffffc09f0085:	mov    -0x40(%rbp),%rbx
+   0xffffffffc09f0089:	leave
+   0xffffffffc09f008a:	ret
