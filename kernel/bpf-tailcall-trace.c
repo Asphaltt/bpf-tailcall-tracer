@@ -31,11 +31,9 @@ struct prog_poke_elem {
 
 static int bpf_prog_id = 0;
 static int bpf_map_id = 0;
-static int index = 0;
 
 module_param(bpf_prog_id, int, 0);
 module_param(bpf_map_id, int, 0);
-module_param(index, int, 0);
 
 typedef struct bpf_prog *(* bpf_prog_get_curr_or_next_fn_t)(u32 *id);
 typedef struct bpf_map *(* bpf_map_get_curr_or_next_fn_t)(u32 *id);
@@ -267,7 +265,22 @@ static void __fill_hole(void *area, unsigned int size)
 	memset(area, 0xcc, size);
 }
 
+#define TRAMP_IMAGE_SIZE 20
+#define TRAMP_IMAGE_CAP (PAGE_SIZE / TRAMP_IMAGE_SIZE)
+static bool __tramp_constructed[TRAMP_IMAGE_CAP] = {};
 static void *bpf_tailcall_tramp_image = NULL;
+
+static bool
+__has_contructed(u32 index)
+{
+	return __tramp_constructed[index];
+}
+
+static void
+__mark_constructed(u32 index)
+{
+	__tramp_constructed[index] = true;
+}
 
 static int
 __alloc_tramp_image(void)
@@ -282,7 +295,15 @@ __alloc_tramp_image(void)
 
 	// set_memory_rox((long)im->image, 1); // set exec later
 
+	memset(__tramp_constructed, false, sizeof(__tramp_constructed));
+
 	return 0;
+}
+
+static u8 *
+__get_tramp_image(u32 index)
+{
+	return bpf_tailcall_tramp_image + index*TRAMP_IMAGE_SIZE;
 }
 
 static void
@@ -301,24 +322,20 @@ __free_tramp_image(void)
  * 5: pop %rdi                      // pop stack
  * 6: pop %rax                      // pop stack
  * 7: jmp ${tgt_prog}               // jump to target prog
- * 8: int3                          // extra space
+ * 8: nop                           // extra space
  *
  * The opcode comes from
  * `llvm-mc -triple=x86_64 -show-encoding -x86-asm-syntax=intel -output-asm-variant=1 <<< 'pop rax'`.
  */
 static int
-__construct_tramp_image(struct bpf_prog *tailcall_prog,
+__construct_tramp_image(u8 *prog, struct bpf_prog *tailcall_prog,
 						struct bpf_prog *fentry_prog, u32 index)
 {
-	u8 *prog = bpf_tailcall_tramp_image;
 	u8 *fentry = (void *) fentry_prog->aux->func[1]->bpf_func;
 	u8 *tailcall_entry;
-	u8 *start = prog;
 	int ret;
 
 	tailcall_entry = ((u8 *) tailcall_prog->bpf_func) + X86_TAIL_CALL_OFFSET;
-
-	pr_info("[i] trampoline image with index: %u\n", index);
 
 	/* push %rax */
 	EMIT1(0x50);
@@ -350,8 +367,41 @@ __construct_tramp_image(struct bpf_prog *tailcall_prog,
 		return ret;
 	}
 
+	/* ${KERNEL}/arch/x86/include/asm/nops.h:BYTES_NOPS1 */
+	prog[0] = 0x90 /* nop */;
+
+	return 0;
+}
+
+static int
+__construct_tramp_images(struct bpf_array *array, struct bpf_prog *fentry_prog)
+{
+	struct bpf_prog *bp;
+	u8 *prog;
+	int ret;
+	u32 i;
+
+	for (i = 0; i<array->map.max_entries && i<TRAMP_IMAGE_CAP; i++) {
+		if (__has_contructed(i))
+			continue;
+
+		bp = (struct bpf_prog *) array->ptrs[i];
+		if (!bp)
+			continue;
+
+		prog = __get_tramp_image(i);
+
+		ret = __construct_tramp_image(prog, bp, fentry_prog, i);
+		if (unlikely(ret)) {
+			pr_err("[X] __construct_tramp_image failed: %d\n", ret);
+			return ret;
+		}
+
+		__mark_constructed(i);
+	}
+
 	/* int3 */
-	__fill_hole(prog, PAGE_SIZE - (prog - start));
+	__fill_hole(prog, PAGE_SIZE - (TRAMP_IMAGE_SIZE * i));
 
 	return 0;
 }
@@ -398,36 +448,51 @@ static int __bpf_check_map(void)
 		return -EINVAL;
 	}
 
-	if (index >= map->max_entries) {
-		pr_err("[X] index is out of range\n");
-		return -EINVAL;
-	}
-
 	return 0;
 }
 
 static int
-__bpf_poke_prog(struct bpf_array_aux *aux, u32 key,
-				u8 *old_addr, u8 *new_addr)
+__bpf_poke_progs(struct bpf_array *array, bool is_hack)
 {
+	struct bpf_array_aux *aux = array->aux;
 	struct prog_poke_elem *elem;
 
 	list_for_each_entry(elem, &aux->poke_progs, list) {
 		struct bpf_jit_poke_descriptor *poke;
+		u8 *p, *pp, *from, *to;
+		struct bpf_prog *prog;
 		int i, ret;
+		u32 key;
 
 		for (i = 0; i < elem->aux->size_poke_tab; i++) {
 			poke = &elem->aux->poke_tab[i];
 
-			if (poke->tail_call.map != map ||
-				poke->tail_call.key != key)
+			if (poke->tail_call.map != map)
 				continue;
 
+			key = poke->tail_call.key;
+			if (key >= map->max_entries || key >= TRAMP_IMAGE_CAP)
+				continue;
+
+			if (!__has_contructed(key))
+				continue;
+
+			prog = (struct bpf_prog *) array->ptrs[key];
+			p = (u8 *) prog->bpf_func + X86_TAIL_CALL_OFFSET;
+			pp = __get_tramp_image(key);
+
+			if (is_hack) {
+				from = p;
+				to = pp;
+			} else {
+				from = pp;
+				to = p;
+			}
 			ret = bpf_arch_text_poke_fn(poke->tailcall_target,
 							BPF_MOD_JUMP,
-							old_addr, new_addr);
+							from, to);
 			if (ret)
-				return ret;
+				pr_err("[X] bpf_arch_text_poke failed: %d\n", ret);
 		}
 	}
 
@@ -435,26 +500,15 @@ __bpf_poke_prog(struct bpf_array_aux *aux, u32 key,
 }
 
 static int
-__bpf_poke_tailcall(bool is_hack)
+__bpf_poke_tailcall(struct bpf_map *map, bool is_hack)
 {
 	struct bpf_array *array = container_of(map, struct bpf_array, map);
 	struct bpf_array_aux *aux = array->aux;
-	u8 *p, *pp = bpf_tailcall_tramp_image;
-	struct bpf_prog *prog;
-	u32 key = index;
 	int ret;
 
 	mutex_lock(&aux->poke_mutex);
 
-	prog = array->ptrs[key];
-	p = ((u8 *) prog->bpf_func) + X86_TAIL_CALL_OFFSET;
-	if (is_hack) {
-		pr_info("[i] poke tailcall: %016llx -> %016llx\n", (u64) p, (u64) pp);
-		ret = __bpf_poke_prog(aux, key, p, pp);
-	} else {
-		pr_info("[i] restore tailcall: %016llx -> %016llx\n", (u64) pp, (u64) p);
-		ret = __bpf_poke_prog(aux, key, pp, p);
-	}
+	ret = __bpf_poke_progs(array, is_hack);
 
 	mutex_unlock(&aux->poke_mutex);
 
@@ -465,7 +519,6 @@ static int
 __bpf_hack_tailcall_trace(void)
 {
 	struct bpf_array *array = container_of(map, struct bpf_array, map);
-	struct bpf_prog *tailcall_prog = array->ptrs[index];
 	int ret;
 
 	ret = __alloc_tramp_image();
@@ -474,9 +527,9 @@ __bpf_hack_tailcall_trace(void)
 		return ret;
 	}
 
-	ret = __construct_tramp_image(tailcall_prog, prog, index);
+	ret = __construct_tramp_images(array, prog);
 	if (unlikely(ret)) {
-		pr_err("[X] __construct_tramp_image failed: %d\n", ret);
+		pr_err("[X] __construct_tramp_images failed: %d\n", ret);
 		goto err_out;
 	}
 
@@ -486,7 +539,7 @@ __bpf_hack_tailcall_trace(void)
 		goto err_out;
 	}
 
-	ret = __bpf_poke_tailcall(true);
+	ret = __bpf_poke_tailcall(map, true);
 	if (unlikely(ret)) {
 		pr_err("[X] __bpf_poke_tailcall failed: %d\n", ret);
 		goto err_out;
@@ -502,7 +555,7 @@ err_out:
 static void
 __bpf_unhack_tailcall_trace(void)
 {
-	int ret = __bpf_poke_tailcall(false);
+	int ret = __bpf_poke_tailcall(map, false);
 	if (unlikely(ret))
 		pr_err("[X] __bpf_poke_tailcall failed: %d\n", ret);
 }
@@ -517,8 +570,7 @@ static int __init tailcall_trace_init(void)
 		return ret;
 	}
 
-	pr_info("[i] bpf_prog_id: %d, bpf_map_id: %d, index: %d\n",
-			bpf_prog_id, bpf_map_id, index);
+	pr_info("[i] bpf_prog_id: %d, bpf_map_id: %d\n", bpf_prog_id, bpf_map_id);
 
 	ret = __bpf_get_prog_by_id((u32)bpf_prog_id);
 	if (unlikely(ret)) {

@@ -25,9 +25,7 @@ import (
 
 func main() {
 	var noTrace bool
-	var index int
 	flag.BoolVar(&noTrace, "no-trace", false, "disable bpf-tailcall-trace")
-	flag.IntVar(&index, "index", 0, "index of PROG_ARRAY")
 	flag.Parse()
 
 	if err := rlimit.RemoveMemlock(); err != nil {
@@ -53,22 +51,18 @@ func main() {
 	prog := obj.tcpconnPrograms.HandleNewConnection
 	for key := uint32(0); key < obj.Progs.MaxEntries(); key++ {
 		key := key
-		if err := obj.tcpconnMaps.Progs.Update(key, prog, ebpf.UpdateAny); err != nil {
+		if err := obj.Progs.Update(key, prog, ebpf.UpdateAny); err != nil {
 			log.Printf("Failed to prepare tailcall(handle_new_connection): %v", err)
 			return
-		} else {
-			log.Printf("Prepared tailcall(handle_new_connection)")
 		}
 		defer func() {
-			if err := obj.tcpconnMaps.Progs.Delete(key); err != nil {
+			if err := obj.Progs.Delete(key); err != nil {
 				log.Printf("Failed to delete tailcall(handle_new_connection): %v", err)
-			} else {
-				log.Printf("Deleted tailcall(handle_new_connection)")
 			}
 		}()
 	}
 
-	mapInfo, err := obj.tcpconnMaps.Progs.Info()
+	mapInfo, err := obj.Progs.Info()
 	if err != nil {
 		log.Printf("Failed to get map info: %v", err)
 		return
@@ -78,6 +72,7 @@ func main() {
 		log.Printf("Failed to get map id")
 		return
 	}
+
 	spec, err := loadFentryFexit()
 	if err != nil {
 		log.Printf("Failed to load bpf obj: %v", err)
@@ -118,7 +113,7 @@ func main() {
 			"./kernel/bpf-tailcall-trace.ko",
 			fmt.Sprintf("bpf_prog_id=%d", progID),
 			fmt.Sprintf("bpf_map_id=%d", mapID),
-			fmt.Sprintf("index=%d", index)).CombinedOutput(); err != nil {
+		).CombinedOutput(); err != nil {
 			log.Printf("Failed to load bpf-tailcall-trace.ko: %v\n%s", err, out)
 			return
 		}
