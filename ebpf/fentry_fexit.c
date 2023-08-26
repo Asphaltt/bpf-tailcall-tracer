@@ -16,44 +16,33 @@ struct {
     __uint(max_entries, 1);
 } socks SEC(".maps");
 
-SEC("kprobe/tailcall")
-int fentry_tailcall(struct pt_regs *ctx)
+static __noinline void
+__fn(struct pt_regs *regs, u32 index)
 {
-    bpf_printk("tcpconn, fentry_tailcall, regs: %p\n", ctx);
+    // This is the actual function that will be called by kernel module.
+
+    bpf_printk("tcpconn, __fn, regs: %p, index: %u\n", regs, index);
 
     __u32 key = 0;
     struct sock **skp = bpf_map_lookup_elem(&socks, &key);
     if (!skp)
-        return 0;
+        return;
 
     struct sock *sk = *skp;
-    __handle_new_connection(ctx, sk, PROBE_TYPE_FENTRY, 0);
-
-    bpf_printk("tcpconn, fentry_tailcall, regs: %p, at end\n", ctx);
-
-    return 0;
+    __handle_new_connection(regs, sk, PROBE_TYPE_FENTRY, index);
 }
 
-// SEC("fexit/tailcall")
-// int BPF_PROG(fexit_tailcall, struct pt_regs *regs, int retval)
-// {
-//     bpf_printk("tcpconn, fexit_tailcall\n");
-
-//     __u32 key = 0;
-//     struct sock **skp = bpf_map_lookup_and_delete(&socks, &key);
-//     if (!skp)
-//         return 0;
-
-//     struct sock *sk = *skp;
-//     __handle_new_connection(ctx, sk, PROBE_TYPE_FEXIT, retval);
-
-//     return 0;
-// }
-
-SEC("fentry/perf_event_output")
-int BPF_PROG(fentry_perf_event_output, void *event, void *data, struct pt_regs * regs)
+SEC("kprobe/tailcall")
+int fentry_tailcall(struct pt_regs *regs)
 {
-    bpf_printk("tcpconn, fentry_perf_event_output, regs: %p\n", regs); // regs: 0x0 after hack
+    bpf_printk("tcpconn, fentry_tailcall, regs: %p\n", regs);
+
+    __fn(regs, 2);
+
+    /* This is to avoid clang optimization.
+     * Or, the index in __fn() will be optimized to 2.
+     */
+    __fn(regs, 3);
 
     return 0;
 }

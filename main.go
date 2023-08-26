@@ -25,7 +25,9 @@ import (
 
 func main() {
 	var noTrace bool
+	var index int
 	flag.BoolVar(&noTrace, "no-trace", false, "disable bpf-tailcall-trace")
+	flag.IntVar(&index, "index", 0, "index of PROG_ARRAY")
 	flag.Parse()
 
 	if err := rlimit.RemoveMemlock(); err != nil {
@@ -49,12 +51,21 @@ func main() {
 
 	// prepare programs for bpf_tail_call()
 	prog := obj.tcpconnPrograms.HandleNewConnection
-	key := uint32(0)
-	if err := obj.tcpconnMaps.Progs.Update(key, prog, ebpf.UpdateAny); err != nil {
-		log.Printf("Failed to prepare tailcall(handle_new_connection): %v", err)
-		return
-	} else {
-		log.Printf("Prepared tailcall(handle_new_connection)")
+	for key := uint32(0); key < obj.Progs.MaxEntries(); key++ {
+		key := key
+		if err := obj.tcpconnMaps.Progs.Update(key, prog, ebpf.UpdateAny); err != nil {
+			log.Printf("Failed to prepare tailcall(handle_new_connection): %v", err)
+			return
+		} else {
+			log.Printf("Prepared tailcall(handle_new_connection)")
+		}
+		defer func() {
+			if err := obj.tcpconnMaps.Progs.Delete(key); err != nil {
+				log.Printf("Failed to delete tailcall(handle_new_connection): %v", err)
+			} else {
+				log.Printf("Deleted tailcall(handle_new_connection)")
+			}
+		}()
 	}
 
 	mapInfo, err := obj.tcpconnMaps.Progs.Info()
@@ -73,13 +84,6 @@ func main() {
 		return
 	}
 
-	// tailcallFentry := spec.Programs["fentry_tailcall"]
-	// tailcallFentry.AttachTarget = obj.tcpconnPrograms.K_tcpConnect
-	// tailcallFentry.AttachTo = "k_tcp_connect"
-	// tailcallFexit := spec.Programs["fexit_tailcall"]
-	// tailcallFexit.AttachTarget = obj.tcpconnPrograms.K_tcpConnect
-	// tailcallFexit.AttachTo = "k_tcp_connect"
-
 	var ffObj fentryFexitObjects
 	if err := spec.LoadAndAssign(&ffObj, &ebpf.CollectionOptions{
 		MapReplacements: map[string]*ebpf.Map{
@@ -97,16 +101,6 @@ func main() {
 	}
 	defer ffObj.Close()
 
-	if link, err := link.AttachTracing(link.TracingOptions{
-		Program: ffObj.FentryPerfEventOutput,
-	}); err != nil {
-		log.Printf("Failed to attach perf event: %v", err)
-		return
-	} else {
-		defer link.Close()
-		log.Printf("Attached perf event")
-	}
-
 	if !noTrace {
 		progInfo, err := ffObj.FentryTailcall.Info()
 		if err != nil {
@@ -123,7 +117,8 @@ func main() {
 		if out, err := exec.Command("insmod",
 			"./kernel/bpf-tailcall-trace.ko",
 			fmt.Sprintf("bpf_prog_id=%d", progID),
-			fmt.Sprintf("bpf_map_id=%d", mapID)).CombinedOutput(); err != nil {
+			fmt.Sprintf("bpf_map_id=%d", mapID),
+			fmt.Sprintf("index=%d", index)).CombinedOutput(); err != nil {
 			log.Printf("Failed to load bpf-tailcall-trace.ko: %v\n%s", err, out)
 			return
 		}
@@ -133,14 +128,6 @@ func main() {
 			}
 		}()
 	}
-
-	defer func() {
-		if err := obj.tcpconnMaps.Progs.Delete(key); err != nil {
-			log.Printf("Failed to delete tailcall(handle_new_connection): %v", err)
-		} else {
-			log.Printf("Deleted tailcall(handle_new_connection)")
-		}
-	}()
 
 	if kp, err := link.Kprobe("tcp_connect", obj.K_tcpConnect, nil); err != nil {
 		log.Printf("Failed to attach kprobe(tcp_connect): %v", err)
@@ -206,11 +193,11 @@ func handlePerfEvent(ctx context.Context, events *ebpf.Map) {
 				netip.AddrFrom4(ev.Saddr), ev.Sport,
 				netip.AddrFrom4(ev.Daddr), ev.Dport)
 		case 1:
-			log.Printf("new tcp connection: %s:%d -> %s:%d (fentry)",
+			log.Printf("new tcp connection: %s:%d -> %s:%d (fentry on index: %d)",
 				netip.AddrFrom4(ev.Saddr), ev.Sport,
-				netip.AddrFrom4(ev.Daddr), ev.Dport)
+				netip.AddrFrom4(ev.Daddr), ev.Dport, ev.Retval)
 		case 2:
-			log.Printf("new tcp connection: %s:%d -> %s:%d (fexit: %d)",
+			log.Printf("new tcp connection: %s:%d -> %s:%d (fexit on index: %d)",
 				netip.AddrFrom4(ev.Saddr), ev.Sport,
 				netip.AddrFrom4(ev.Daddr), ev.Dport, ev.Retval)
 		}
